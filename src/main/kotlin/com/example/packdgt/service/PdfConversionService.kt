@@ -33,6 +33,9 @@ class PdfConversionService(
     fun start() {
         logger.info("Démarrage du pool LibreOffice (taille={}, ports={}-{})", poolSize, startPort, startPort + poolSize - 1)
 
+        // Note : le message macOS "Task policy set failed: 4 ((os/kern) invalid argument)"
+        // est un avertissement inoffensif du noyau — LibreOffice demande une politique de
+        // scheduling optionnelle que macOS refuse. Ça n'affecte pas le fonctionnement.
         officeManager = LocalOfficeManager.builder()
             .portNumbers(*IntArray(poolSize) { startPort + it })
             .taskExecutionTimeout(taskTimeout)
