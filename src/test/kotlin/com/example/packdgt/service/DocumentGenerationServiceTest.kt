@@ -18,10 +18,13 @@ class DocumentGenerationServiceTest {
     private val testTemplatesDir = "build/test-templates-gen"
     private val testOutputDir = "build/test-output"
     private lateinit var service: DocumentGenerationService
+    private lateinit var conversionService: PdfConversionService
 
     @BeforeAll
     fun setup() {
         createSampleTemplate(testTemplatesDir)
+        conversionService = PdfConversionService(poolSize = 1, startPort = 12004)
+        conversionService.start()
         val config = AppConfig(
             templatesDirectory = testTemplatesDir,
             outputDirectory = testOutputDir,
@@ -30,7 +33,7 @@ class DocumentGenerationServiceTest {
         service = DocumentGenerationService(
             appConfig = config,
             templateService = TemplateService(testTemplatesDir),
-            pdfConversionService = PdfConversionService(),
+            pdfConversionService = conversionService,
             pdfPostProcessingService = PdfPostProcessingService()
         )
     }
@@ -120,6 +123,7 @@ class DocumentGenerationServiceTest {
 
     @AfterAll
     fun cleanup() {
+        conversionService.stop()
         listOf(testTemplatesDir, testOutputDir).forEach { dirPath ->
             val dir = Paths.get(dirPath)
             if (Files.exists(dir)) {

@@ -33,9 +33,12 @@ fun Application.module() {
     configureCallLogging()
     configureStatusPages()
 
-    // Services (composition manuelle — pas de framework DI pour rester simple)
+    // Services
     val templateService = TemplateService(config.templatesDirectory)
-    val pdfConversionService = PdfConversionService()
+    val pdfConversionService = PdfConversionService(
+        poolSize = config.libreOfficePoolSize,
+        startPort = config.libreOfficePort
+    )
     val pdfPostProcessingService = PdfPostProcessingService()
     val documentGenerationService = DocumentGenerationService(
         appConfig = config,
@@ -43,6 +46,14 @@ fun Application.module() {
         pdfConversionService = pdfConversionService,
         pdfPostProcessingService = pdfPostProcessingService
     )
+
+    // Démarrer le pool LibreOffice
+    pdfConversionService.start()
+
+    // Arrêt propre du pool LibreOffice à l'arrêt de l'application
+    monitor.subscribe(ApplicationStopped) {
+        pdfConversionService.stop()
+    }
 
     // Routes
     routing {

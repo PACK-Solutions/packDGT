@@ -40,7 +40,8 @@ dependencies {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
 
-    // DOCX → PDF : LibreOffice headless (pas de dépendance Maven, binaire système)
+    // DOCX → PDF : JODConverter (pool de LibreOffice résidents, conversion par socket)
+    implementation("org.jodconverter:jodconverter-local:4.4.7")
 
     // Apache PDFBox 3 - PDF post-processing (watermark, métadonnées, protection)
     implementation("org.apache.pdfbox:pdfbox:$pdfboxVersion")

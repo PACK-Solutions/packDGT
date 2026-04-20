@@ -31,7 +31,9 @@ class DocumentRoutesTest {
             config = io.ktor.server.config.MapApplicationConfig(
                 "app.templates.directory" to "templates",
                 "app.output.directory" to "build/test-output",
-                "app.output.saveToDisc" to "false"
+                "app.output.saveToDisc" to "false",
+                "app.libreoffice.port" to "12006",
+                "app.libreoffice.poolSize" to "1"
             )
         }
         application { module() }

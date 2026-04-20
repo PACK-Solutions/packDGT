@@ -12,12 +12,13 @@ import java.nio.file.Paths
 class PdfConversionServiceTest {
 
     private val testTemplatesDir = "build/test-templates-conv"
-    private val conversionService = PdfConversionService()
+    private val conversionService = PdfConversionService(poolSize = 1, startPort = 12002)
     private val templateService = TemplateService(testTemplatesDir)
 
     @BeforeAll
     fun setup() {
         createSampleTemplate(testTemplatesDir)
+        conversionService.start()
     }
 
     @Test
@@ -41,7 +42,6 @@ class PdfConversionServiceTest {
         val doc = Loader.loadPDF(pdfBytes)
         assertTrue(doc.numberOfPages >= 1, "Le PDF doit avoir au moins une page")
 
-        // Vérifier que le contenu textuel est présent dans le PDF
         val text = PDFTextStripper().getText(doc)
         assertTrue(text.contains("Test User"), "Le PDF doit contenir le nom remplacé")
         assertTrue(text.contains("POL-TEST"), "Le PDF doit contenir le numéro de police")
@@ -74,6 +74,7 @@ class PdfConversionServiceTest {
 
     @AfterAll
     fun cleanup() {
+        conversionService.stop()
         val dir = Paths.get(testTemplatesDir)
         if (Files.exists(dir)) {
             Files.walk(dir).sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
