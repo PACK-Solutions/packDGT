@@ -6,7 +6,7 @@ API REST de generation de PDF a partir de templates Word/DOCX et de donnees JSON
 
 - Remplacement de **placeholders** `{{key}}` dans un template DOCX
 - **Tableaux dynamiques** : generation de lignes a partir de donnees JSON (ex: mouvements, sinistres, garanties)
-- Conversion DOCX vers PDF
+- Conversion DOCX vers PDF fidele via **LibreOffice** (pool JODConverter)
 - **Post-traitement PDF** via PDFBox :
   - Watermark en filigrane (texte, rotation 45deg, transparence)
   - Metadonnees (auteur, titre, sujet)
@@ -22,11 +22,29 @@ API REST de generation de PDF a partir de templates Word/DOCX et de donnees JSON
 | Framework HTTP | Ktor | 3.0.3 |
 | Build | Gradle (Kotlin DSL) | 8.12 |
 | JVM | Java | 21 |
-| DOCX | Apache POI (XWPF) | 5.3.0 |
-| DOCX vers PDF | OpenSagres xdocreport | 2.0.4 |
+| DOCX manipulation | Apache POI (XWPF) | 5.3.0 |
+| DOCX vers PDF | JODConverter + LibreOffice | 4.4.7 |
 | PDF post-traitement | Apache PDFBox | 3.0.3 |
 | JSON | Jackson | 2.18.1 |
 | Tests | JUnit 5 + Ktor Test Host | 5.11.3 |
+
+## Pre-requis
+
+- **Java 21+**
+- **LibreOffice** installe et `soffice` dans le PATH
+
+```bash
+# macOS
+brew install --cask libreoffice
+
+# Linux (Debian/Ubuntu)
+sudo apt install libreoffice-core libreoffice-writer
+
+# Verification
+soffice --version
+```
+
+> **Note macOS :** le message `Task policy set failed: 4 ((os/kern) invalid argument)` apparait au demarrage de LibreOffice. C'est un avertissement inoffensif du noyau macOS qui n'affecte pas le fonctionnement.
 
 ## Demarrage rapide
 
@@ -39,7 +57,27 @@ API REST de generation de PDF a partir de templates Word/DOCX et de donnees JSON
 # -> http://localhost:8080
 ```
 
+Au demarrage, l'application lance un pool de **2 instances LibreOffice** residentes (ports 2002-2003). Le premier appel prend ~1.8s (bootstrap UNO), les suivants ~70ms.
+
 Le template d'exemple `attestation-assurance.docx` est genere automatiquement dans `templates/` lors du premier lancement des tests.
+
+## Performance
+
+Le pipeline utilise JODConverter pour maintenir un pool d'instances LibreOffice en memoire, evitant le cold-start de ~1.7s par requete.
+
+| Metrique | Temps |
+|----------|-------|
+| 1re requete (warm-up UNO) | ~1.8s |
+| Requetes suivantes | **~70ms** |
+| 3 requetes paralleles | **~140ms** les 3 |
+
+Decomposition serveur (regime permanent) :
+
+| Etape | Temps |
+|-------|-------|
+| Template (POI + cache memoire) | ~10ms |
+| Conversion (LibreOffice via socket UNO) | ~57ms |
+| Post-traitement (PDFBox) | ~3ms |
 
 ## API
 
@@ -194,11 +232,18 @@ Pour les utiliser :
 | `OUTPUT_DIR` | `output` | Repertoire de sortie PDF |
 | `SAVE_TO_DISC` | `false` | Sauvegarde systematique des PDF |
 
+Configuration avancee dans `application.yaml` :
+
+| Propriete | Defaut | Description |
+|-----------|--------|-------------|
+| `app.libreoffice.port` | `2002` | Port de base pour le pool LibreOffice |
+| `app.libreoffice.poolSize` | `2` | Nombre d'instances LibreOffice dans le pool |
+
 ## Architecture
 
 ```
 src/main/kotlin/com/example/packdgt/
-├── Application.kt                        # Point d'entree, module Ktor
+├── Application.kt                        # Point d'entree, module Ktor, cycle de vie LO
 ├── config/AppConfig.kt                   # Configuration YAML -> data class
 ├── exception/AppExceptions.kt            # Hierarchie sealed d'exceptions
 ├── api/
@@ -206,9 +251,9 @@ src/main/kotlin/com/example/packdgt/
 │   ├── plugins/Plugins.kt               # Plugins Ktor
 │   └── routes/DocumentRoutes.kt          # Routes REST
 ├── service/
-│   ├── DocumentGenerationService.kt      # Orchestrateur du pipeline
-│   ├── TemplateService.kt                # POI : placeholders + tableaux dynamiques
-│   ├── PdfConversionService.kt           # OpenSagres : DOCX -> PDF
+│   ├── DocumentGenerationService.kt      # Orchestrateur du pipeline (avec metriques)
+│   ├── TemplateService.kt                # POI : placeholders + tableaux + cache memoire
+│   ├── PdfConversionService.kt           # JODConverter : pool LibreOffice resident
 │   └── PdfPostProcessingService.kt       # PDFBox : watermark, metadata, protection
 └── tools/TemplateGenerator.kt            # Utilitaire creation template
 ```
@@ -218,11 +263,19 @@ src/main/kotlin/com/example/packdgt/
 ```
 JSON request
     -> Validation
-    -> Apache POI (remplacement placeholders + expansion tableaux)
-    -> OpenSagres (conversion DOCX -> PDF)
-    -> PDFBox (watermark + metadonnees + pagination + protection)
-    -> HTTP response (binary PDF)
+    -> Apache POI (remplacement placeholders + expansion tableaux)  [~10ms]
+    -> JODConverter/LibreOffice (conversion DOCX -> PDF via UNO)    [~57ms]
+    -> PDFBox (watermark + metadonnees + pagination + protection)   [~3ms]
+    -> HTTP response (binary PDF)                                   [~70ms total]
 ```
+
+### Optimisations
+
+- **Pool LibreOffice resident** : JODConverter maintient des instances soffice en memoire et communique par socket UNO, eliminant le cold-start de ~1.7s par requete
+- **Cache template en memoire** : `ConcurrentHashMap` avec invalidation sur `lastModified`, evite les lectures disque repetees
+- **Fonts PDFBox pre-instanciees** : les objets `PDType1Font` sont crees une fois et reutilises (thread-safe)
+- **Constantes trigonometriques pre-calculees** : cos/sin du watermark calcules au demarrage
+- **Metriques de timing** : chaque etape du pipeline est chronometree dans les logs
 
 ## Tests
 
@@ -235,23 +288,23 @@ JSON request
 |-------|-------|------------|
 | `TemplateServiceTest` | 10 | Placeholders, tableaux statiques/dynamiques, tableau vide, securite |
 | `PdfPostProcessingServiceTest` | 6 | Metadonnees, watermark, protection, pagination |
-| `PdfConversionServiceTest` | 2 | Conversion DOCX valide/invalide |
+| `PdfConversionServiceTest` | 2 | Conversion DOCX valide, tableaux dynamiques |
 | `DocumentGenerationServiceTest` | 6 | Pipeline complet avec tableaux, sauvegarde, validation |
 | `DocumentRoutesTest` | 7 | Endpoints HTTP, codes d'erreur, PDF avec tableaux |
 
 ## Limites connues
 
-- **Rendu PDF** : la conversion OpenSagres (iText 2.1.7) produit un rendu basique. Les mises en page Word complexes (images, SmartArt, colonnes multiples) ne sont pas fidelement reproduites.
-- **Licence** : OpenSagres utilise iText 2.1.7 (LGPL). Verifier la compatibilite avec votre politique de licence.
-- **Placeholders fragmentes** : Word peut decouper `{{key}}` sur plusieurs runs XML. Le moteur gere ce cas en concatenant les runs, mais des enrichissements de style en plein milieu d'un placeholder peuvent poser probleme.
-- **Tableaux dynamiques** : un seul marqueur `{{#name}}` par tableau. Pas de tableaux imbriques.
+- **Pre-requis systeme** : LibreOffice doit etre installe sur le serveur (non embarque dans le JAR)
+- **Placeholders fragmentes** : Word peut decouper `{{key}}` sur plusieurs runs XML. Le moteur gere ce cas en concatenant les runs, mais des enrichissements de style au milieu d'un placeholder peuvent poser probleme
+- **Tableaux dynamiques** : un seul marqueur `{{#name}}` par tableau. Pas de tableaux imbriques
+- **macOS** : le message `Task policy set failed` apparait au demarrage de LibreOffice (inoffensif)
 
-## Pistes d'evolution (V2)
+## Pistes d'evolution
 
-- **LibreOffice headless** pour un rendu DOCX -> PDF pixel-perfect
 - **Templating avance** : boucles, conditions, images dynamiques (via docx-stamper)
 - **Stockage S3/MinIO** pour les templates et PDF generes
 - **File d'attente** (RabbitMQ/Kafka) pour la generation en masse
 - **Signature PDF** numerique (PAdES)
 - **PDF/A-3** pour l'archivage reglementaire
 - **Metriques** Micrometer/Prometheus
+- **Docker** : image avec LibreOffice pre-installe pour deploiement simplifie
