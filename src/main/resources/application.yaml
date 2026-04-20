@@ -1,0 +1,11 @@
+ktor:
+  deployment:
+    port: 8080
+    port: ${PORT}
+
+app:
+  templates:
+    directory: templates
+  output:
+    directory: output
+    saveToDisc: false

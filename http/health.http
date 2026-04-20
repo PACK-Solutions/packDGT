@@ -1,0 +1,21 @@
+### Health check
+GET http://localhost:8080/health
+Accept: application/json
+
+> {%
+    client.test("Health endpoint returns UP", function() {
+        client.assert(response.status === 200);
+        client.assert(response.body.status === "UP");
+    });
+%}
+
+### Liste des templates disponibles
+GET http://localhost:8080/templates
+Accept: application/json
+
+> {%
+    client.test("Templates list is not empty", function() {
+        client.assert(response.status === 200);
+        client.assert(response.body.templates.length > 0);
+    });
+%}

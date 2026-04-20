@@ -1,0 +1,41 @@
+### Génération complète — attestation avec toutes les options et tableau dynamique
+POST http://localhost:8080/generate
+Content-Type: application/json
+
+{
+  "templateName": "attestation-assurance.docx",
+  "outputFileName": "attestation-dupont-2026.pdf",
+  "data": {
+    "customerName": "Jean Dupont",
+    "policyNumber": "POL-2026-000123",
+    "startDate": "2026-04-01",
+    "endDate": "2027-03-31",
+    "premium": "1250,50 €",
+    "address": "10 rue Exemple, 75001 Paris"
+  },
+  "tables": {
+    "movements": [
+      ["01/04/2026", "Prélèvement prime mensuelle", "-125,05 €", "8 432,50 €"],
+      ["15/03/2026", "Remboursement sinistre #S-2026-042", "+2 500,00 €", "8 557,55 €"],
+      ["01/03/2026", "Prélèvement prime mensuelle", "-125,05 €", "6 057,55 €"],
+      ["15/02/2026", "Avenant — extension garantie", "-45,00 €", "6 182,60 €"],
+      ["01/02/2026", "Prélèvement prime mensuelle", "-125,05 €", "6 227,60 €"],
+      ["01/01/2026", "Prélèvement prime mensuelle", "-125,05 €", "6 352,65 €"]
+    ]
+  },
+  "options": {
+    "watermark": "CONFIDENTIEL",
+    "author": "Insurance API",
+    "title": "Attestation d'assurance — Jean Dupont",
+    "subject": "Police POL-2026-000123"
+  }
+}
+
+> {%
+    client.test("Full PDF generated with all options", function() {
+        client.assert(response.status === 200);
+        client.assert(response.contentType.mimeType === "application/pdf");
+        var disposition = response.headers.valueOf("Content-Disposition");
+        client.assert(disposition.indexOf("attestation-dupont-2026.pdf") !== -1);
+    });
+%}

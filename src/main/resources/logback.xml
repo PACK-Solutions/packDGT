@@ -1,0 +1,16 @@
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId:-no-correlation}] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <logger name="com.example.packdgt" level="DEBUG"/>
+    <logger name="io.ktor" level="INFO"/>
+    <logger name="org.apache.poi" level="WARN"/>
+    <logger name="org.apache.pdfbox" level="WARN"/>
+</configuration>

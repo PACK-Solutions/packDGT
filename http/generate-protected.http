@@ -1,0 +1,35 @@
+### Génération avec protection PDF (lecture seule)
+POST http://localhost:8080/generate
+Content-Type: application/json
+
+{
+  "templateName": "attestation-assurance.docx",
+  "outputFileName": "attestation-protegee.pdf",
+  "data": {
+    "customerName": "Marie Martin",
+    "policyNumber": "POL-2026-000456",
+    "startDate": "2026-06-01",
+    "endDate": "2027-05-31",
+    "premium": "890,00 €",
+    "address": "25 boulevard Haussmann, 75009 Paris"
+  },
+  "tables": {
+    "movements": [
+      ["01/06/2026", "Souscription contrat", "-890,00 €", "9 110,00 €"],
+      ["01/06/2026", "Virement initial", "+10 000,00 €", "10 000,00 €"]
+    ]
+  },
+  "options": {
+    "watermark": "ORIGINAL",
+    "author": "Insurance API",
+    "title": "Attestation — Marie Martin",
+    "protect": true
+  }
+}
+
+> {%
+    client.test("Protected PDF generated", function() {
+        client.assert(response.status === 200);
+        client.assert(response.contentType.mimeType === "application/pdf");
+    });
+%}

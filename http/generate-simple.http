@@ -1,0 +1,22 @@
+### Génération simple — attestation sans options
+POST http://localhost:8080/generate
+Content-Type: application/json
+
+{
+  "templateName": "attestation-assurance.docx",
+  "data": {
+    "customerName": "Jean Dupont",
+    "policyNumber": "POL-2026-000123",
+    "startDate": "2026-04-01",
+    "endDate": "2027-03-31",
+    "premium": "1250,50 €",
+    "address": "10 rue Exemple, 75001 Paris"
+  }
+}
+
+> {%
+    client.test("PDF generated successfully", function() {
+        client.assert(response.status === 200);
+        client.assert(response.contentType.mimeType === "application/pdf");
+    });
+%}

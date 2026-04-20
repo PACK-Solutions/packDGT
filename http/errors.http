@@ -1,0 +1,72 @@
+### Erreur 404 — template inexistant
+POST http://localhost:8080/generate
+Content-Type: application/json
+
+{
+  "templateName": "template-inexistant.docx",
+  "data": {
+    "customerName": "Test"
+  }
+}
+
+> {%
+    client.test("Returns 404 for missing template", function() {
+        client.assert(response.status === 404);
+        client.assert(response.body.error === "Not Found");
+        client.assert(response.body.correlationId !== null);
+    });
+%}
+
+###
+
+### Erreur 400 — nom de template vide
+POST http://localhost:8080/generate
+Content-Type: application/json
+
+{
+  "templateName": "",
+  "data": {}
+}
+
+> {%
+    client.test("Returns 400 for empty template name", function() {
+        client.assert(response.status === 400);
+        client.assert(response.body.error === "Bad Request");
+    });
+%}
+
+###
+
+### Erreur 400 — extension invalide
+POST http://localhost:8080/generate
+Content-Type: application/json
+
+{
+  "templateName": "document.txt",
+  "data": {}
+}
+
+> {%
+    client.test("Returns 400 for non-docx extension", function() {
+        client.assert(response.status === 400);
+    });
+%}
+
+###
+
+### Requête avec correlation ID personnalisé
+POST http://localhost:8080/generate
+Content-Type: application/json
+X-Request-Id: my-custom-trace-123
+
+{
+  "templateName": "inexistant.docx",
+  "data": {}
+}
+
+> {%
+    client.test("Correlation ID is echoed in error response", function() {
+        client.assert(response.status === 404);
+        client.assert(response.body.correlationId === "my-custom-trace-123");
+    });
+%}
