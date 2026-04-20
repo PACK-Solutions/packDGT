@@ -18,18 +18,38 @@ import java.io.ByteArrayOutputStream
 import java.util.*
 
 /**
- * Post-traitement PDF avec Apache PDFBox 3 :
- * - Ajout de métadonnées (auteur, titre, sujet)
- * - Watermark en filigrane
- * - Protection simple en lecture
- * - Numérotation des pages (footer)
+ * Post-traitement PDF avec Apache PDFBox 3.
+ *
+ * Optimisations :
+ * - Instances de fonts pré-créées et réutilisées (thread-safe en lecture seule)
+ * - Objets graphiques constants partagés
+ * - Short-circuit si aucune option n'a d'effet
  */
 class PdfPostProcessingService {
 
     private val logger = LoggerFactory.getLogger(PdfPostProcessingService::class.java)
 
+    // Fonts réutilisables (PDType1Font est thread-safe en lecture)
+    private val watermarkFont = PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD)
+    private val pageNumberFont = PDType1Font(Standard14Fonts.FontName.HELVETICA)
+
+    // Constantes graphiques
+    private val watermarkColor = Color(150, 150, 150)
+    private val pageNumberColor = Color(100, 100, 100)
+    private val watermarkAlpha = 0.15f
+    private val watermarkAngle = Math.toRadians(45.0)
+    private val watermarkFontSize = 52f
+    private val pageNumberFontSize = 9f
+    private val watermarkCos = Math.cos(watermarkAngle).toFloat()
+    private val watermarkSin = Math.sin(watermarkAngle).toFloat()
+
     fun process(pdfBytes: ByteArray, options: GenerateOptions?): ByteArray {
         if (options == null) return pdfBytes
+
+        // Short-circuit : si aucune option n'a d'effet réel
+        if (!hasWork(options)) {
+            return applyMetadataOnly(pdfBytes, options)
+        }
 
         try {
             Loader.loadPDF(pdfBytes).use { document ->
@@ -45,13 +65,36 @@ class PdfPostProcessingService {
                     applyProtection(document)
                 }
 
-                ByteArrayOutputStream().use { output ->
+                ByteArrayOutputStream(pdfBytes.size + 4096).use { output ->
                     document.save(output)
                     return output.toByteArray()
                 }
             }
         } catch (e: PdfPostProcessingException) {
             throw e
+        } catch (e: Exception) {
+            throw PdfPostProcessingException("Échec du post-traitement PDF", e)
+        }
+    }
+
+    private fun hasWork(options: GenerateOptions): Boolean {
+        return options.watermark != null || options.protect
+    }
+
+    /**
+     * Chemin rapide : uniquement métadonnées + pagination, pas de watermark/protection.
+     */
+    private fun applyMetadataOnly(pdfBytes: ByteArray, options: GenerateOptions): ByteArray {
+        try {
+            Loader.loadPDF(pdfBytes).use { document ->
+                applyMetadata(document, options)
+                addPageNumbers(document)
+
+                ByteArrayOutputStream(pdfBytes.size + 1024).use { output ->
+                    document.save(output)
+                    return output.toByteArray()
+                }
+            }
         } catch (e: Exception) {
             throw PdfPostProcessingException("Échec du post-traitement PDF", e)
         }
@@ -64,15 +107,15 @@ class PdfPostProcessingService {
         options.subject?.let { info.subject = it }
         info.creator = "packDGT - Document Generation Tool"
         info.producer = "Apache PDFBox"
-        info.creationDate = Calendar.getInstance()
-        info.modificationDate = Calendar.getInstance()
+        val now = Calendar.getInstance()
+        info.creationDate = now
+        info.modificationDate = now
         logger.debug("Métadonnées PDF appliquées")
     }
 
     private fun applyWatermark(document: PDDocument, text: String) {
-        val font = PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD)
-        val fontSize = 52f
-        val angle = Math.toRadians(45.0)
+        // Pré-calculer la largeur du texte (invariant par page)
+        val textWidth = watermarkFont.getStringWidth(text) / 1000 * watermarkFontSize
 
         for (page in document.pages) {
             val pageSize = page.mediaBox ?: PDRectangle.A4
@@ -84,25 +127,18 @@ class PdfPostProcessingService {
                 PDPageContentStream.AppendMode.APPEND,
                 true, true
             ).use { cs ->
-                // Transparence
                 val gs = PDExtendedGraphicsState()
-                gs.nonStrokingAlphaConstant = 0.15f
+                gs.nonStrokingAlphaConstant = watermarkAlpha
                 cs.setGraphicsStateParameters(gs)
 
-                cs.setFont(font, fontSize)
-                cs.setNonStrokingColor(Color(150, 150, 150))
+                cs.setFont(watermarkFont, watermarkFontSize)
+                cs.setNonStrokingColor(watermarkColor)
                 cs.beginText()
 
-                // Matrice de rotation centrée
-                val cos = Math.cos(angle).toFloat()
-                val sin = Math.sin(angle).toFloat()
+                val offsetX = centerX - (textWidth / 2 * watermarkCos)
+                val offsetY = centerY - (textWidth / 2 * watermarkSin)
 
-                // Approximation du centrage du texte
-                val textWidth = font.getStringWidth(text) / 1000 * fontSize
-                val offsetX = centerX - (textWidth / 2 * cos)
-                val offsetY = centerY - (textWidth / 2 * sin)
-
-                cs.setTextMatrix(Matrix(cos, sin, -sin, cos, offsetX, offsetY))
+                cs.setTextMatrix(Matrix(watermarkCos, watermarkSin, -watermarkSin, watermarkCos, offsetX, offsetY))
                 cs.showText(text)
                 cs.endText()
             }
@@ -111,8 +147,6 @@ class PdfPostProcessingService {
     }
 
     private fun addPageNumbers(document: PDDocument) {
-        val font = PDType1Font(Standard14Fonts.FontName.HELVETICA)
-        val fontSize = 9f
         val totalPages = document.numberOfPages
 
         for ((index, page) in document.pages.withIndex()) {
@@ -124,15 +158,14 @@ class PdfPostProcessingService {
                 PDPageContentStream.AppendMode.APPEND,
                 true, true
             ).use { cs ->
-                cs.setFont(font, fontSize)
-                cs.setNonStrokingColor(Color(100, 100, 100))
+                cs.setFont(pageNumberFont, pageNumberFontSize)
+                cs.setNonStrokingColor(pageNumberColor)
                 cs.beginText()
 
-                val textWidth = font.getStringWidth(text) / 1000 * fontSize
+                val textWidth = pageNumberFont.getStringWidth(text) / 1000 * pageNumberFontSize
                 val x = (pageSize.width - textWidth) / 2
-                val y = 25f
 
-                cs.newLineAtOffset(x, y)
+                cs.newLineAtOffset(x, 25f)
                 cs.showText(text)
                 cs.endText()
             }

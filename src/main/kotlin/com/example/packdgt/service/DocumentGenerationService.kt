@@ -1,16 +1,18 @@
 package com.example.packdgt.service
 
-import com.example.packdgt.api.dto.GenerateOptions
 import com.example.packdgt.api.dto.GenerateRequest
 import com.example.packdgt.config.AppConfig
 import com.example.packdgt.exception.InvalidRequestException
 import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.system.measureTimeMillis
 
 /**
  * Orchestrateur de la génération documentaire.
- * Pipeline : validation -> template POI -> conversion PDF -> post-traitement PDFBox
+ * Pipeline : validation → template POI → conversion PDF → post-traitement PDFBox
+ *
+ * Chaque étape est chronométrée pour identifier les goulots d'étranglement.
  */
 class DocumentGenerationService(
     private val appConfig: AppConfig,
@@ -31,17 +33,27 @@ class DocumentGenerationService(
 
         logger.info("Génération démarrée - template={}, clés={}", request.templateName, request.data.keys)
 
-        // 1. Remplacement des placeholders et expansion des tableaux dans le DOCX (Apache POI)
-        val docxBytes = templateService.process(request.templateName, request.data, request.tables)
-        logger.debug("Template DOCX traité : {} octets", docxBytes.size)
+        val totalStart = System.nanoTime()
 
-        // 2. Conversion DOCX -> PDF (OpenSagres)
-        val rawPdfBytes = pdfConversionService.convert(docxBytes)
-        logger.debug("PDF brut généré : {} octets", rawPdfBytes.size)
+        // 1. Remplacement des placeholders et expansion des tableaux (Apache POI)
+        lateinit var docxBytes: ByteArray
+        val templateMs = measureTimeMillis {
+            docxBytes = templateService.process(request.templateName, request.data, request.tables)
+        }
+
+        // 2. Conversion DOCX → PDF (LibreOffice headless)
+        lateinit var rawPdfBytes: ByteArray
+        val conversionMs = measureTimeMillis {
+            rawPdfBytes = pdfConversionService.convert(docxBytes)
+        }
 
         // 3. Post-traitement PDF (PDFBox)
-        val finalPdfBytes = pdfPostProcessingService.process(rawPdfBytes, request.options)
-        logger.debug("PDF final : {} octets", finalPdfBytes.size)
+        lateinit var finalPdfBytes: ByteArray
+        val postProcessMs = measureTimeMillis {
+            finalPdfBytes = pdfPostProcessingService.process(rawPdfBytes, request.options)
+        }
+
+        val totalMs = (System.nanoTime() - totalStart) / 1_000_000
 
         // 4. Sauvegarde sur disque si demandé
         val fileName = request.outputFileName ?: "${request.templateName.removeSuffix(".docx")}.pdf"
@@ -51,7 +63,13 @@ class DocumentGenerationService(
             saveToDisc(fileName, finalPdfBytes)
         }
 
-        logger.info("Génération terminée - fichier={}, taille={} octets", fileName, finalPdfBytes.size)
+        logger.info(
+            "Génération terminée - fichier={}, taille={} octets, " +
+                "temps=[template={}ms, conversion={}ms, postprocess={}ms, total={}ms]",
+            fileName, finalPdfBytes.size,
+            templateMs, conversionMs, postProcessMs, totalMs
+        )
+
         return GenerationResult(finalPdfBytes, fileName)
     }
 

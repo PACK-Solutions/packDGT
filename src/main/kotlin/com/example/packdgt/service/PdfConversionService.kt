@@ -4,25 +4,27 @@ import com.example.packdgt.exception.PdfConversionException
 import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Conversion DOCX → PDF via LibreOffice headless.
  *
- * Commande exécutée : soffice --headless --convert-to pdf --outdir <tmp> <docx>
- *
- * Produit un rendu fidèle au DOCX original (polices, tableaux, espacements,
- * images, etc.) contrairement aux convertisseurs purement Java (OpenSagres, docx4j)
- * qui produisent un rendu dégradé.
- *
- * Pré-requis : LibreOffice installé et `soffice` accessible dans le PATH.
+ * Optimisations :
+ * - Chaque requête concurrente utilise son propre UserInstallation (pas de lock profil)
+ * - Timeout configurable sur le process
+ * - Nettoyage asynchrone des fichiers temporaires
  */
-class PdfConversionService {
+class PdfConversionService(
+    private val timeoutSeconds: Long = 30L,
+    private val maxConcurrent: Int = 4
+) {
 
     private val logger = LoggerFactory.getLogger(PdfConversionService::class.java)
+    private val instanceCounter = AtomicInteger(0)
 
     companion object {
         private const val SOFFICE_COMMAND = "soffice"
-        private const val TIMEOUT_SECONDS = 30L
     }
 
     init {
@@ -32,16 +34,17 @@ class PdfConversionService {
     fun convert(docxBytes: ByteArray): ByteArray {
         logger.debug("Conversion DOCX ({} octets) vers PDF via LibreOffice", docxBytes.size)
 
+        val instanceId = instanceCounter.getAndIncrement() % maxConcurrent
         val tempDir = Files.createTempDirectory("packdgt-conv-")
+        val userInstallDir = tempDir.resolve("user-$instanceId")
+        Files.createDirectories(userInstallDir)
+
         try {
-            // Écrire le DOCX dans un fichier temporaire
             val docxFile = tempDir.resolve("document.docx")
             Files.write(docxFile, docxBytes)
 
-            // Exécuter LibreOffice headless
-            runLibreOffice(docxFile, tempDir)
+            runLibreOffice(docxFile, tempDir, userInstallDir)
 
-            // Lire le PDF résultant
             val pdfFile = tempDir.resolve("document.pdf")
             if (!Files.exists(pdfFile)) {
                 throw PdfConversionException("LibreOffice n'a pas produit de fichier PDF")
@@ -55,16 +58,17 @@ class PdfConversionService {
         } catch (e: Exception) {
             throw PdfConversionException("Échec de la conversion DOCX vers PDF", e)
         } finally {
-            // Nettoyage des fichiers temporaires
-            cleanupTempDir(tempDir)
+            cleanupAsync(tempDir)
         }
     }
 
-    private fun runLibreOffice(docxFile: Path, outputDir: Path) {
+    private fun runLibreOffice(docxFile: Path, outputDir: Path, userInstallDir: Path) {
         val command = listOf(
             SOFFICE_COMMAND,
             "--headless",
             "--norestore",
+            "--nofirststartwizard",
+            "-env:UserInstallation=file://${userInstallDir.toAbsolutePath()}",
             "--convert-to", "pdf",
             "--outdir", outputDir.toAbsolutePath().toString(),
             docxFile.toAbsolutePath().toString()
@@ -76,8 +80,17 @@ class PdfConversionService {
             .redirectErrorStream(true)
             .start()
 
+        val completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
+
+        if (!completed) {
+            process.destroyForcibly()
+            throw PdfConversionException(
+                "LibreOffice a dépassé le timeout de ${timeoutSeconds}s"
+            )
+        }
+
         val output = process.inputStream.bufferedReader().readText()
-        val exitCode = process.waitFor()
+        val exitCode = process.exitValue()
 
         if (exitCode != 0) {
             logger.error("LibreOffice a échoué (code {}): {}", exitCode, output)
@@ -95,26 +108,27 @@ class PdfConversionService {
                 .redirectErrorStream(true)
                 .start()
             val version = process.inputStream.bufferedReader().readText().trim()
-            process.waitFor()
+            process.waitFor(5, TimeUnit.SECONDS)
             logger.info("LibreOffice détecté : {}", version)
         } catch (e: Exception) {
-            logger.error(
-                "LibreOffice (soffice) n'est pas disponible dans le PATH. " +
-                    "Installer LibreOffice : brew install --cask libreoffice"
-            )
             throw PdfConversionException(
                 "LibreOffice n'est pas installé ou 'soffice' n'est pas dans le PATH", e
             )
         }
     }
 
-    private fun cleanupTempDir(dir: Path) {
-        try {
-            Files.walk(dir)
-                .sorted(Comparator.reverseOrder())
-                .forEach { Files.deleteIfExists(it) }
-        } catch (e: Exception) {
-            logger.warn("Impossible de nettoyer le répertoire temporaire : {}", dir, e)
+    /**
+     * Nettoyage asynchrone des fichiers temporaires pour ne pas bloquer la réponse.
+     */
+    private fun cleanupAsync(dir: Path) {
+        Thread.startVirtualThread {
+            try {
+                Files.walk(dir)
+                    .sorted(Comparator.reverseOrder())
+                    .forEach { Files.deleteIfExists(it) }
+            } catch (e: Exception) {
+                logger.warn("Impossible de nettoyer : {}", dir, e)
+            }
         }
     }
 }

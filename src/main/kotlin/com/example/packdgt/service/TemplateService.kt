@@ -4,10 +4,12 @@ import com.example.packdgt.exception.TemplateNotFoundException
 import com.example.packdgt.exception.TemplateProcessingException
 import org.apache.poi.xwpf.usermodel.*
 import org.slf4j.LoggerFactory
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
 
 class TemplateService(private val templatesDirectory: String) {
 
@@ -15,16 +17,26 @@ class TemplateService(private val templatesDirectory: String) {
     private val placeholderPattern = Regex("\\{\\{(\\w+)}}")
     private val tableMarkerPattern = Regex("\\{\\{#(\\w+)}}")
 
+    /**
+     * Cache en mémoire des templates DOCX.
+     * Clé = nom du fichier, Valeur = (bytes, lastModified).
+     * Invalidation automatique si le fichier est modifié sur disque.
+     */
+    private data class CachedTemplate(val bytes: ByteArray, val lastModified: Long)
+    private val templateCache = ConcurrentHashMap<String, CachedTemplate>()
+
     fun process(
         templateName: String,
         data: Map<String, String>,
         tables: Map<String, List<List<String>>> = emptyMap()
     ): ByteArray {
         val templatePath = resolveTemplatePath(templateName)
-        logger.debug("Traitement du template : {}", templatePath)
+        val templateBytes = loadCachedTemplate(templateName, templatePath)
+
+        logger.debug("Traitement du template : {} ({} octets, cache)", templatePath, templateBytes.size)
 
         try {
-            Files.newInputStream(templatePath).use { inputStream ->
+            ByteArrayInputStream(templateBytes).use { inputStream ->
                 XWPFDocument(inputStream).use { document ->
                     val replacedCount = replaceInDocument(document, data)
                     logger.debug("{} remplacement(s) de placeholders effectué(s)", replacedCount)
@@ -34,7 +46,7 @@ class TemplateService(private val templatesDirectory: String) {
                         logger.debug("{} tableau(x) dynamique(s) rempli(s)", tablesExpanded)
                     }
 
-                    ByteArrayOutputStream().use { output ->
+                    ByteArrayOutputStream(templateBytes.size).use { output ->
                         document.write(output)
                         return output.toByteArray()
                     }
@@ -71,6 +83,24 @@ class TemplateService(private val templatesDirectory: String) {
         return path
     }
 
+    /**
+     * Charge le template depuis le cache mémoire.
+     * Invalidation si le fichier a été modifié sur disque (comparaison lastModified).
+     */
+    private fun loadCachedTemplate(name: String, path: Path): ByteArray {
+        val currentModified = Files.getLastModifiedTime(path).toMillis()
+        val cached = templateCache[name]
+
+        if (cached != null && cached.lastModified == currentModified) {
+            return cached.bytes
+        }
+
+        val bytes = Files.readAllBytes(path)
+        templateCache[name] = CachedTemplate(bytes, currentModified)
+        logger.debug("Template '{}' chargé en cache ({} octets)", name, bytes.size)
+        return bytes
+    }
+
     // ── Remplacement de placeholders simples ──────────────────────────────
 
     private fun replaceInDocument(document: XWPFDocument, data: Map<String, String>): Int {
@@ -104,13 +134,6 @@ class TemplateService(private val templatesDirectory: String) {
         return totalReplacements
     }
 
-    /**
-     * Remplace les placeholders dans un paragraphe.
-     *
-     * Word peut découper le texte d'un placeholder sur plusieurs runs.
-     * On concatène les textes, on effectue les remplacements, puis on
-     * réattribue le texte complet au premier run et on vide les autres.
-     */
     private fun replaceInParagraph(paragraph: XWPFParagraph, data: Map<String, String>): Int {
         val runs = paragraph.runs ?: return 0
         if (runs.isEmpty()) return 0
@@ -149,15 +172,6 @@ class TemplateService(private val templatesDirectory: String) {
 
     // ── Expansion de tableaux dynamiques ──────────────────────────────────
 
-    /**
-     * Cherche les tableaux contenant un marqueur {{#tableName}} dans une cellule,
-     * supprime la ligne-modèle et insère les lignes de données à la place.
-     *
-     * Convention du template :
-     *   - Ligne 0 : en-têtes (conservée telle quelle)
-     *   - Ligne 1 : contient {{#tableName}} dans la 1re cellule (ligne-modèle, supprimée)
-     *   - Les lignes de données sont ajoutées après suppression de la ligne-modèle
-     */
     private fun expandTables(document: XWPFDocument, tables: Map<String, List<List<String>>>): Int {
         var expanded = 0
 
@@ -177,10 +191,8 @@ class TemplateService(private val templatesDirectory: String) {
 
                 val colCount = row.tableCells.size
 
-                // Supprimer la ligne-modèle
                 table.removeRow(rowIndex)
 
-                // Ajouter les lignes de données via l'API POI haut niveau
                 for (cells in rowsData) {
                     val newRow = table.createRow()
                     for (colIndex in 0 until colCount) {
@@ -191,7 +203,7 @@ class TemplateService(private val templatesDirectory: String) {
                 }
 
                 expanded++
-                break // un seul marqueur par table
+                break
             }
         }
 
