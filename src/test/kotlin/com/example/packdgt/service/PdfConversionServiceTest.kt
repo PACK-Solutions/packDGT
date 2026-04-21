@@ -1,23 +1,19 @@
 package com.example.packdgt.service
 
-import com.example.packdgt.tools.createSampleTemplate
 import org.apache.pdfbox.Loader
 import org.apache.pdfbox.text.PDFTextStripper
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
-import java.nio.file.Files
-import java.nio.file.Paths
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PdfConversionServiceTest {
 
-    private val testTemplatesDir = "build/test-templates-conv"
+    private val templatesDir = "templates"
     private val conversionService = PdfConversionService(poolSize = 1, startPort = 12002)
-    private val templateService = TemplateService(testTemplatesDir)
+    private val templateService = TemplateService(templatesDir)
 
     @BeforeAll
     fun setup() {
-        createSampleTemplate(testTemplatesDir)
         conversionService.start()
     }
 
@@ -75,9 +71,5 @@ class PdfConversionServiceTest {
     @AfterAll
     fun cleanup() {
         conversionService.stop()
-        val dir = Paths.get(testTemplatesDir)
-        if (Files.exists(dir)) {
-            Files.walk(dir).sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
-        }
     }
 }

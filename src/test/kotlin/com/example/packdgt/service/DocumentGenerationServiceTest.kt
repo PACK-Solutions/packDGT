@@ -5,7 +5,6 @@ import com.example.packdgt.api.dto.GenerateRequest
 import com.example.packdgt.config.AppConfig
 import com.example.packdgt.exception.InvalidRequestException
 import com.example.packdgt.exception.TemplateNotFoundException
-import com.example.packdgt.tools.createSampleTemplate
 import org.apache.pdfbox.Loader
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
@@ -15,24 +14,23 @@ import java.nio.file.Paths
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DocumentGenerationServiceTest {
 
-    private val testTemplatesDir = "build/test-templates-gen"
+    private val templatesDir = "templates"
     private val testOutputDir = "build/test-output"
     private lateinit var service: DocumentGenerationService
     private lateinit var conversionService: PdfConversionService
 
     @BeforeAll
     fun setup() {
-        createSampleTemplate(testTemplatesDir)
         conversionService = PdfConversionService(poolSize = 1, startPort = 12004)
         conversionService.start()
         val config = AppConfig(
-            templatesDirectory = testTemplatesDir,
+            templatesDirectory = templatesDir,
             outputDirectory = testOutputDir,
             saveToDisc = false
         )
         service = DocumentGenerationService(
             appConfig = config,
-            templateService = TemplateService(testTemplatesDir),
+            templateService = TemplateService(templatesDir),
             pdfConversionService = conversionService,
             pdfPostProcessingService = PdfPostProcessingService()
         )
@@ -124,11 +122,9 @@ class DocumentGenerationServiceTest {
     @AfterAll
     fun cleanup() {
         conversionService.stop()
-        listOf(testTemplatesDir, testOutputDir).forEach { dirPath ->
-            val dir = Paths.get(dirPath)
-            if (Files.exists(dir)) {
-                Files.walk(dir).sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
-            }
+        val dir = Paths.get(testOutputDir)
+        if (Files.exists(dir)) {
+            Files.walk(dir).sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
         }
     }
 }

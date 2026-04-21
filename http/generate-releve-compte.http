@@ -1,0 +1,253 @@
+### Génération relevé de compte annuel — Assurance Vie Agir (CARAC)
+### Template multi-pages avec tableaux dynamiques
+POST http://localhost:8080/generate
+Content-Type: application/json
+
+{
+  "templateName": "releve-compte-multi.docx",
+  "outputFileName": "releve-compte-anglaret-2025.pdf",
+  "data": {
+    "numeroAdherent": "7161694",
+    "identifiantClient": "905168641",
+    "numeroContrat": "AVA0001111",
+    "civilite": "M.",
+    "prenom": "Arnaud",
+    "nom": "Le Saint",
+    "adresseLigne1": "LIEU DIT LES ROBERTS",
+    "adresseLigne2": "05310 FREISSINIERES",
+
+    "dateReleve": "31 DÉCEMBRE 2025",
+    "dateReleveCourt": "31/12/2025",
+    "dateEffetContrat": "19/01/2017",
+    "cadreFiscal": "Assurance-vie",
+    "dateTermeContrat": "19/01/2026",
+
+    "datePrecedente": "31/12/2024",
+    "datePrecedente3ans": "31/12/2022",
+    "datePrecedente5ans": "31/12/2020",
+    "dateCourante": "31/12/2025",
+    "anneeCourante": "2025",
+    "anneeProchaine": "2026",
+
+    "epargnePrecedente": "56 229.87 €",
+    "totalVersementsNets": "0.00 €",
+    "totalRachats": "56 000.00 €",
+    "totalArbitragesInvestis": "0.00 €",
+    "totalArbitragesDesinvestis": "0.00 €",
+    "interetsTechniquesInvestis": "300.45 €",
+    "cotisationPlancherEuros": "0.00 €",
+    "plusMoinsValueUCInvestie": "0.00 €",
+    "plusMoinsValueUCDesinvestie": "0.00 €",
+    "cotisationPlancherUC": "0.00 €",
+    "epargneCourante": "889.28 €",
+
+    "totalRachatsPartiels": "56 000.00 €",
+
+    "valeurRachat": "889.28 €",
+    "montantSupportEuros": "775.75 €",
+    "fraisSupportEuros": "-131.48",
+
+    "tauxMoyenRendement": "3.75 %",
+    "tauxRendementMinGaranti": "2.00 %",
+
+    "montantGarantiEuros": "776.51 €",
+    "dateGarantie": "19/01/2026",
+
+    "cumulVersementsBrutsPrecedent": "50 500.00 €",
+    "cumulVersementsBrutsCourant": "522.55 €",
+
+    "fraisEpargneGereeTaux": "0.70 %",
+    "fraisEpargneGereeMontant": "131.48 €",
+    "fraisEpargneGereeUCMontant": "32.37 €",
+    "fraisFinanciersUCMontant": "32.37 €",
+    "fraisArbitragesTaux": "0.00 %",
+    "fraisArbitragesMontant": "0.00 €",
+    "totalFraisPrelevesAnnee": "196.22 €",
+
+    "totalInteretsTechniquesInvestis": "494.34 €",
+    "totalInteretsTechniquesDesinvestis": "193.89 €",
+
+    "tauxRendementMinGarantiEuros": "0.00 %",
+    "montantRendementMinGaranti": "0.00 €",
+    "tauxParticipationExcedents": "0.00 %",
+    "montantParticipationExcedents": "494.34 €",
+    "tauxFraisEpargneGeree": "0.70 %",
+    "montantFraisEpargneGeree": "131.48 €",
+    "tauxPrelevementsSociaux": "17.20 %",
+    "montantPrelevementsSociaux": "62.41 €",
+    "montantCotisationPlancher": "0.00 €"
+  },
+  "tables": {
+    "rachats": [
+      ["Rachat partiel net de prélèvements sociaux", "14/05/2025", "22/05/2025", "", "", "56 000.00 €"]
+    ],
+    "situationSupportsUC": [
+      ["Choix Solidaire 1", "87.980 €", "1.2933468", "113.79 €", "-0.39"]
+    ],
+    "evolutionUC": [
+      ["Choix Solidaire", "21.22 %", "5.22 %", "2.12 %", "8.43 %"],
+      ["Indice de référence : 65 EURO AGG 1-3 + 25 E.STOXX 50 (CLO DIV REINVESTIS) + 10 ESTR OIS, 75 ESTR OIS + 25 E.STOXX 50 avan", "", "5.28 %", "8.12 %", "13.12 %"]
+    ],
+    "evolutionSupportEuros": [
+      ["Taux de rendement minimum garanti", "31/12/2025", "31/12/2025", "0.00 %", "", "0.00 €", ""],
+      ["Taux de participation aux excédents", "31/12/2025", "31/12/2025", "0.00 %", "", "494.34 €", ""],
+      ["Frais sur épargne gérée", "31/12/2025", "31/12/2025", "0.70 %", "", "", "131.48 €"],
+      ["Prélèvements sociaux annuels", "31/12/2025", "31/12/2025", "17.20 %", "", "", "62.41 €"],
+      ["Cotisation plancher", "31/12/2025", "31/12/2025", "", "", "", "0.00 €"]
+    ],
+    "nbUCGaranti": [
+      ["Choix Solidaire", "1.2933468", "0.90 %"]
+    ],
+    "syntheseFrais": [
+      ["Frais sur épargne gérée appliqués sur l'épargne en compte sur le support libellé en euros (en phase de constitution et de liquidation)", "0.70 %", "131.48 €"],
+      ["Frais sur épargne gérée appliqués sur l'épargne en compte sur les supports libellés en unités de compte (en phase de constitution)", "Voir le détail ci-dessous pour chaque unité de compte", "32.37 €"],
+      ["Frais financiers de l'actif prélevés au titre des unités de compte sélectionnées (quotité de rétrocession incluse)", "Voir le détail ci-dessous pour chaque unité de compte", "32.37 €"],
+      ["Frais sur arbitrages", "0.00 %", "0.00 €"]
+    ],
+    "detailFraisUC": [
+      ["Choix Solidaire", "0.90 %", "32.37 €", "0.90 %", "32.37 €", "64.74 €"]
+    ],
+    "actifsFinanciers": [
+      ["FR0010177899", "Choix Solidaire / ECOFI Investissements", "3", "6.12 %", "", "0.90 % (dont 0.38 %)", "5.22 %", "", "0.90 %", "1.80 % (dont 0.38 %)", "4.32 %", ""]
+    ]
+  },
+  "options": {
+    "author": "CARAC - Mutuelle d'épargne",
+    "title": "Relevé de compte — AVA0001111",
+    "subject": "Relevé de compte annuel au 31/12/2025"
+  }
+}
+
+> {%
+    client.test("Relevé de compte PDF generated", function() {
+        client.assert(response.status === 200);
+        client.assert(response.contentType.mimeType === "application/pdf");
+        var disposition = response.headers.valueOf("Content-Disposition");
+        client.assert(disposition.indexOf("releve-compte-anglaret-2025.pdf") !== -1);
+    });
+%}
+
+###
+
+### Génération relevé de compte — Autre adhérent (exemple minimal sans rachats)
+POST http://localhost:8080/generate
+Content-Type: application/json
+
+{
+  "templateName": "releve-compte-multi.docx",
+  "outputFileName": "releve-compte-martin-2025.pdf",
+  "data": {
+    "numeroAdherent": "8245103",
+    "identifiantClient": "912345678",
+    "numeroContrat": "AVA0002222",
+    "civilite": "Mme",
+    "prenom": "SOPHIE",
+    "nom": "MARTIN",
+    "adresseLigne1": "15 RUE DE LA PAIX",
+    "adresseLigne2": "75002 PARIS",
+
+    "dateReleve": "31 DÉCEMBRE 2025",
+    "dateReleveCourt": "31/12/2025",
+    "dateEffetContrat": "05/03/2020",
+    "cadreFiscal": "Assurance-vie",
+    "dateTermeContrat": "05/03/2028",
+
+    "datePrecedente": "31/12/2024",
+    "datePrecedente3ans": "31/12/2022",
+    "datePrecedente5ans": "31/12/2020",
+    "dateCourante": "31/12/2025",
+    "anneeCourante": "2025",
+    "anneeProchaine": "2026",
+
+    "epargnePrecedente": "25 000.00 €",
+    "totalVersementsNets": "3 600.00 €",
+    "totalRachats": "0.00 €",
+    "totalArbitragesInvestis": "0.00 €",
+    "totalArbitragesDesinvestis": "0.00 €",
+    "interetsTechniquesInvestis": "450.12 €",
+    "cotisationPlancherEuros": "0.00 €",
+    "plusMoinsValueUCInvestie": "120.50 €",
+    "plusMoinsValueUCDesinvestie": "0.00 €",
+    "cotisationPlancherUC": "0.00 €",
+    "epargneCourante": "29 170.62 €",
+
+    "totalRachatsPartiels": "0.00 €",
+
+    "valeurRachat": "29 170.62 €",
+    "montantSupportEuros": "20 500.00 €",
+    "fraisSupportEuros": "-143.50",
+
+    "tauxMoyenRendement": "3.75 %",
+    "tauxRendementMinGaranti": "2.00 %",
+
+    "montantGarantiEuros": "19 800.00 €",
+    "dateGarantie": "05/03/2028",
+
+    "cumulVersementsBrutsPrecedent": "25 000.00 €",
+    "cumulVersementsBrutsCourant": "28 600.00 €",
+
+    "fraisEpargneGereeTaux": "0.70 %",
+    "fraisEpargneGereeMontant": "143.50 €",
+    "fraisEpargneGereeUCMontant": "45.20 €",
+    "fraisFinanciersUCMontant": "45.20 €",
+    "fraisArbitragesTaux": "0.00 %",
+    "fraisArbitragesMontant": "0.00 €",
+    "totalFraisPrelevesAnnee": "233.90 €",
+
+    "totalInteretsTechniquesInvestis": "570.62 €",
+    "totalInteretsTechniquesDesinvestis": "120.50 €",
+
+    "tauxRendementMinGarantiEuros": "0.00 %",
+    "montantRendementMinGaranti": "0.00 €",
+    "tauxParticipationExcedents": "0.00 %",
+    "montantParticipationExcedents": "570.62 €",
+    "tauxFraisEpargneGeree": "0.70 %",
+    "montantFraisEpargneGeree": "143.50 €",
+    "tauxPrelevementsSociaux": "17.20 %",
+    "montantPrelevementsSociaux": "82.10 €",
+    "montantCotisationPlancher": "0.00 €"
+  },
+  "tables": {
+    "rachats": [],
+    "situationSupportsUC": [
+      ["Choix Solidaire 1", "87.980 €", "98.5214350", "8 670.62 €", "-45.20"]
+    ],
+    "evolutionUC": [
+      ["Choix Solidaire", "15.30 %", "5.22 %", "2.12 %", "8.43 %"]
+    ],
+    "evolutionSupportEuros": [
+      ["Taux de rendement minimum garanti", "31/12/2025", "31/12/2025", "0.00 %", "", "0.00 €", ""],
+      ["Taux de participation aux excédents", "31/12/2025", "31/12/2025", "0.00 %", "", "570.62 €", ""],
+      ["Frais sur épargne gérée", "31/12/2025", "31/12/2025", "0.70 %", "", "", "143.50 €"],
+      ["Prélèvements sociaux annuels", "31/12/2025", "31/12/2025", "17.20 %", "", "", "82.10 €"],
+      ["Cotisation plancher", "31/12/2025", "31/12/2025", "", "", "", "0.00 €"]
+    ],
+    "nbUCGaranti": [
+      ["Choix Solidaire", "98.5214350", "0.90 %"]
+    ],
+    "syntheseFrais": [
+      ["Frais sur épargne gérée appliqués sur l'épargne en compte sur le support libellé en euros", "0.70 %", "143.50 €"],
+      ["Frais sur épargne gérée appliqués sur l'épargne en compte sur les supports en UC", "0.90 %", "45.20 €"],
+      ["Frais financiers de l'actif prélevés au titre des UC", "0.90 %", "45.20 €"],
+      ["Frais sur arbitrages", "0.00 %", "0.00 €"]
+    ],
+    "detailFraisUC": [
+      ["Choix Solidaire", "0.90 %", "45.20 €", "0.90 %", "45.20 €", "90.40 €"]
+    ],
+    "actifsFinanciers": [
+      ["FR0010177899", "Choix Solidaire / ECOFI Investissements", "3", "6.12 %", "", "0.90 % (dont 0.38 %)", "5.22 %", "", "0.90 %", "1.80 % (dont 0.38 %)", "4.32 %", ""]
+    ]
+  },
+  "options": {
+    "author": "CARAC - Mutuelle d'épargne",
+    "title": "Relevé de compte — AVA0002222",
+    "subject": "Relevé de compte annuel au 31/12/2025"
+  }
+}
+
+> {%
+    client.test("Relevé de compte PDF generated — autre adhérent", function() {
+        client.assert(response.status === 200);
+        client.assert(response.contentType.mimeType === "application/pdf");
+    });
+%}

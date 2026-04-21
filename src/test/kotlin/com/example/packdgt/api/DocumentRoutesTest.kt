@@ -3,7 +3,6 @@ package com.example.packdgt.api
 import com.example.packdgt.api.dto.ErrorResponse
 import com.example.packdgt.api.dto.HealthResponse
 import com.example.packdgt.module
-import com.example.packdgt.tools.createSampleTemplate
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
@@ -16,11 +15,6 @@ import org.junit.jupiter.api.Assertions.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DocumentRoutesTest {
-
-    @BeforeAll
-    fun setup() {
-        createSampleTemplate("templates")
-    }
 
     private fun jsonClient(builder: ApplicationTestBuilder) = builder.createClient {
         install(ContentNegotiation) { jackson() }
