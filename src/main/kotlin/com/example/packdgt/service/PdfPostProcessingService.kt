@@ -4,6 +4,7 @@ import com.example.packdgt.api.dto.GenerateOptions
 import com.example.packdgt.exception.PdfPostProcessingException
 import org.apache.pdfbox.Loader
 import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
 import org.apache.pdfbox.pdmodel.common.PDRectangle
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission
@@ -171,6 +172,116 @@ class PdfPostProcessingService {
             }
         }
         logger.debug("Numérotation ajoutée sur {} page(s)", totalPages)
+    }
+
+    /**
+     * Ajoute une ou plusieurs pages de texte libre à la fin du document PDF.
+     * Gère le retour à la ligne automatique et la pagination si le texte dépasse la page.
+     */
+    fun appendTextPage(pdfBytes: ByteArray, text: String, title: String = "Texte libre"): ByteArray {
+        try {
+            Loader.loadPDF(pdfBytes).use { document ->
+                val margin = 50f
+                val titleFontSize = 14f
+                val bodyFontSize = 11f
+                val lineHeight = bodyFontSize * 1.5f
+                val maxWidth = PDRectangle.A4.width - 2 * margin
+                val titleColor = Color(0, 51, 102)
+
+                var page = PDPage(PDRectangle.A4)
+                document.addPage(page)
+                var cs = PDPageContentStream(document, page)
+                var yPosition = PDRectangle.A4.height - margin
+
+                // Titre
+                cs.setFont(watermarkFont, titleFontSize)
+                cs.setNonStrokingColor(titleColor)
+                cs.beginText()
+                cs.newLineAtOffset(margin, yPosition)
+                cs.showText(title)
+                cs.endText()
+                yPosition -= titleFontSize + 8f
+
+                // Séparateur
+                cs.setStrokingColor(Color(180, 180, 180))
+                cs.setLineWidth(0.5f)
+                cs.moveTo(margin, yPosition)
+                cs.lineTo(PDRectangle.A4.width - margin, yPosition)
+                cs.stroke()
+                yPosition -= 20f
+
+                // Corps du texte
+                cs.setFont(pageNumberFont, bodyFontSize)
+                cs.setNonStrokingColor(Color.BLACK)
+
+                val wrappedLines = wrapText(text, pageNumberFont, bodyFontSize, maxWidth)
+
+                for (line in wrappedLines) {
+                    if (yPosition < margin + lineHeight) {
+                        cs.close()
+                        page = PDPage(PDRectangle.A4)
+                        document.addPage(page)
+                        cs = PDPageContentStream(document, page)
+                        yPosition = PDRectangle.A4.height - margin
+                        cs.setFont(pageNumberFont, bodyFontSize)
+                        cs.setNonStrokingColor(Color.BLACK)
+                    }
+
+                    cs.beginText()
+                    cs.newLineAtOffset(margin, yPosition)
+                    cs.showText(line)
+                    cs.endText()
+                    yPosition -= lineHeight
+                }
+
+                cs.close()
+
+                ByteArrayOutputStream(pdfBytes.size + 4096).use { output ->
+                    document.save(output)
+                    logger.debug("Page de texte libre ajoutée ({} lignes)", wrappedLines.size)
+                    return output.toByteArray()
+                }
+            }
+        } catch (e: PdfPostProcessingException) {
+            throw e
+        } catch (e: Exception) {
+            throw PdfPostProcessingException("Échec de l'ajout de texte libre", e)
+        }
+    }
+
+    private fun wrapText(text: String, font: PDType1Font, fontSize: Float, maxWidth: Float): List<String> {
+        val result = mutableListOf<String>()
+        val paragraphs = text.split("\n")
+
+        for (paragraph in paragraphs) {
+            if (paragraph.isBlank()) {
+                result.add("")
+                continue
+            }
+
+            val words = paragraph.split(" ")
+            val currentLine = StringBuilder()
+
+            for (word in words) {
+                val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+                val testWidth = font.getStringWidth(testLine) / 1000 * fontSize
+
+                if (testWidth > maxWidth && currentLine.isNotEmpty()) {
+                    result.add(currentLine.toString())
+                    currentLine.clear()
+                    currentLine.append(word)
+                } else {
+                    currentLine.clear()
+                    currentLine.append(testLine)
+                }
+            }
+
+            if (currentLine.isNotEmpty()) {
+                result.add(currentLine.toString())
+            }
+        }
+
+        return result
     }
 
     private fun applyProtection(document: PDDocument) {

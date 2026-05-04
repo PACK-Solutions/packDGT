@@ -28,7 +28,11 @@ class DocumentGenerationService(
         val fileName: String
     )
 
-    fun generate(request: GenerateRequest): GenerationResult {
+    fun generate(
+        request: GenerateRequest,
+        freeText: String? = null,
+        freeTextPlaceholder: Boolean = false
+    ): GenerationResult {
         validate(request)
 
         logger.info("Génération démarrée - template={}, clés={}", request.templateName, request.data.keys)
@@ -38,7 +42,7 @@ class DocumentGenerationService(
         // 1. Remplacement des placeholders et expansion des tableaux (Apache POI)
         lateinit var docxBytes: ByteArray
         val templateMs = measureTimeMillis {
-            docxBytes = templateService.process(request.templateName, request.data, request.tables)
+            docxBytes = templateService.process(request.templateName, request.data, request.tables, freeText, freeTextPlaceholder)
         }
 
         // 2. Conversion DOCX → PDF (LibreOffice headless)

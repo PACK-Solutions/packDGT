@@ -65,6 +65,19 @@ fun Application.configureStatusPages() {
             )
         }
 
+        exception<DocumentNotFoundException> { call, cause ->
+            val correlationId = call.callId
+            call.respond(
+                HttpStatusCode.NotFound,
+                ErrorResponse(
+                    status = 404,
+                    error = "Not Found",
+                    message = cause.message ?: "Document introuvable",
+                    correlationId = correlationId
+                )
+            )
+        }
+
         exception<InvalidRequestException> { call, cause ->
             val correlationId = call.callId
             call.respond(

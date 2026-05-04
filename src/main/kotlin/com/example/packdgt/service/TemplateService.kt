@@ -28,7 +28,9 @@ class TemplateService(private val templatesDirectory: String) {
     fun process(
         templateName: String,
         data: Map<String, String>,
-        tables: Map<String, List<List<String>>> = emptyMap()
+        tables: Map<String, List<List<String>>> = emptyMap(),
+        freeText: String? = null,
+        freeTextPlaceholder: Boolean = false
     ): ByteArray {
         val templatePath = resolveTemplatePath(templateName)
         val templateBytes = loadCachedTemplate(templateName, templatePath)
@@ -44,6 +46,12 @@ class TemplateService(private val templatesDirectory: String) {
                     if (tables.isNotEmpty()) {
                         val tablesExpanded = expandTables(document, tables)
                         logger.debug("{} tableau(x) dynamique(s) rempli(s)", tablesExpanded)
+                    }
+
+                    if (freeTextPlaceholder) {
+                        addFreeTextSection(document, null)
+                    } else if (freeText != null) {
+                        addFreeTextSection(document, freeText)
                     }
 
                     ByteArrayOutputStream(templateBytes.size).use { output ->
@@ -208,6 +216,46 @@ class TemplateService(private val templatesDirectory: String) {
         }
 
         return expanded
+    }
+
+    // ── Insertion de la section texte libre ──────────────────────────────────
+
+    private fun addFreeTextSection(document: XWPFDocument, text: String?) {
+        // Séparateur visuel
+        val separator = document.createParagraph()
+        separator.spacingBefore = 400
+        separator.borderBottom = Borders.SINGLE
+
+        // Titre "Commentaires"
+        val heading = document.createParagraph()
+        heading.spacingBefore = 200
+        heading.spacingAfter = 100
+        val headingRun = heading.createRun()
+        headingRun.isBold = true
+        headingRun.fontSize = 12
+        headingRun.fontFamily = "Arial"
+        headingRun.color = "003366"
+        headingRun.setText("Commentaires")
+
+        if (text != null) {
+            for (line in text.split("\n")) {
+                val para = document.createParagraph()
+                para.spacingAfter = 40
+                val run = para.createRun()
+                run.fontSize = 10
+                run.fontFamily = "Arial"
+                run.setText(line.ifBlank { " " })
+            }
+        } else {
+            val placeholder = document.createParagraph()
+            placeholder.spacingBefore = 80
+            val run = placeholder.createRun()
+            run.isItalic = true
+            run.fontSize = 10
+            run.fontFamily = "Arial"
+            run.color = "999999"
+            run.setText("[Votre texte libre apparaîtra ici]")
+        }
     }
 
     private fun setCellText(cell: XWPFTableCell, text: String) {

@@ -54,10 +54,13 @@ soffice --version
 
 # Lancer le serveur
 ./gradlew run
-# -> http://localhost:8080
+# -> API   : http://localhost:8080
+# -> UI    : http://localhost:8080/ui
 ```
 
 Au demarrage, l'application lance un pool de **2 instances LibreOffice** residentes (ports 2002-2003). Le premier appel prend ~1.8s (bootstrap UNO), les suivants ~70ms.
+
+L'interface web (UI) est servie sur `/ui` et permet de generer, previsualiser, completer (texte libre) et telecharger les PDF interactivement.
 
 Le template d'exemple `attestation-assurance.docx` est genere automatiquement dans `templates/` lors du premier lancement des tests.
 

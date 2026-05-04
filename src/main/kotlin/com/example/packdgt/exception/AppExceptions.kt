@@ -16,3 +16,6 @@ class PdfPostProcessingException(message: String, cause: Throwable? = null) :
 
 class InvalidRequestException(message: String) :
     AppException(message)
+
+class DocumentNotFoundException(id: String) :
+    AppException("Document introuvable : $id")

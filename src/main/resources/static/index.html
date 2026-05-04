@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>packDGT - Générateur de documents</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <div class="brand">
+            <div class="logo">DGT</div>
+            <div>
+                <h1>packDGT</h1>
+                <p class="subtitle">Générateur de documents PDF</p>
+            </div>
+        </div>
+        <nav class="steps" id="steps-indicator">
+            <div class="step active" data-step="1">
+                <span class="step-number">1</span>
+                <span class="step-label">Formulaire</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step" data-step="2">
+                <span class="step-number">2</span>
+                <span class="step-label">Aperçu & Texte libre</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step" data-step="3">
+                <span class="step-number">3</span>
+                <span class="step-label">Document final</span>
+            </div>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <!-- Étape 1 : Sélection du template et formulaire -->
+    <section id="step-1" class="step-section active">
+        <div class="section-header">
+            <h2>Choisir un template</h2>
+            <p class="section-desc">Sélectionnez un modèle de document puis remplissez les champs</p>
+        </div>
+        <div id="template-cards" class="cards"></div>
+
+        <div id="form-container" class="hidden">
+            <div class="form-header">
+                <h2 id="form-title"></h2>
+                <button type="button" class="btn btn-outline" onclick="prefillSampleData()">
+                    <span class="btn-icon">&#9998;</span> Pré-remplir avec des données d'exemple
+                </button>
+            </div>
+
+            <form id="data-form">
+                <div id="fields-container"></div>
+                <div id="tables-container"></div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        Générer le PDF
+                        <span class="btn-icon">&#10132;</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Étape 2 : Aperçu PDF + Texte libre -->
+    <section id="step-2" class="step-section">
+        <div class="split-layout">
+            <div class="split-left">
+                <h2>Aperçu du document</h2>
+                <div class="pdf-viewer" id="viewer-preview">
+                    <div class="pdf-toolbar">
+                        <div class="toolbar-group">
+                            <button class="toolbar-btn" data-viewer="preview" data-action="prev-page" title="Page précédente">&#9664;</button>
+                            <span class="page-info">
+                                Page <span class="page-current">1</span> / <span class="page-total">1</span>
+                            </span>
+                            <button class="toolbar-btn" data-viewer="preview" data-action="next-page" title="Page suivante">&#9654;</button>
+                        </div>
+                        <div class="toolbar-sep"></div>
+                        <div class="toolbar-group">
+                            <button class="toolbar-btn" data-viewer="preview" data-action="zoom-out" title="Dézoomer">&#8722;</button>
+                            <span class="zoom-level">100%</span>
+                            <button class="toolbar-btn" data-viewer="preview" data-action="zoom-in" title="Zoomer">+</button>
+                            <button class="toolbar-btn text-btn" data-viewer="preview" data-action="fit-width" title="Ajuster à la largeur">Ajuster</button>
+                        </div>
+                    </div>
+                    <div class="pdf-pages"></div>
+                </div>
+            </div>
+            <div class="split-right">
+                <h2>Texte libre</h2>
+                <p class="hint">Ajoutez un commentaire ou une note personnalisée. Le texte sera inséré dans la zone « Commentaires » visible dans l'aperçu ci-contre.</p>
+                <textarea id="free-text" placeholder="Saisissez votre texte ici...&#10;&#10;Exemple : Note complémentaire concernant le dossier du client. Ce texte apparaîtra sur une page dédiée à la fin du document généré."></textarea>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-primary" onclick="appendText()">
+                        <span class="btn-icon">&#10010;</span> Ajouter le texte
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="skipToFinal()">
+                        Passer &#10132;
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Étape 3 : Document final -->
+    <section id="step-3" class="step-section">
+        <div class="section-header">
+            <h2>Document final</h2>
+            <p class="section-desc">Votre document est prêt. Vous pouvez le consulter et le télécharger.</p>
+        </div>
+        <div class="pdf-viewer pdf-viewer-full" id="viewer-final">
+            <div class="pdf-toolbar">
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" data-viewer="final" data-action="prev-page" title="Page précédente">&#9664;</button>
+                    <span class="page-info">
+                        Page <span class="page-current">1</span> / <span class="page-total">1</span>
+                    </span>
+                    <button class="toolbar-btn" data-viewer="final" data-action="next-page" title="Page suivante">&#9654;</button>
+                </div>
+                <div class="toolbar-sep"></div>
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" data-viewer="final" data-action="zoom-out" title="Dézoomer">&#8722;</button>
+                    <span class="zoom-level">100%</span>
+                    <button class="toolbar-btn" data-viewer="final" data-action="zoom-in" title="Zoomer">+</button>
+                    <button class="toolbar-btn text-btn" data-viewer="final" data-action="fit-width" title="Ajuster à la largeur">Ajuster</button>
+                </div>
+            </div>
+            <div class="pdf-pages"></div>
+        </div>
+        <div class="form-actions center">
+            <a id="download-link" class="btn btn-primary btn-lg" download>
+                <span class="btn-icon">&#11015;</span> Télécharger le PDF
+            </a>
+            <button type="button" class="btn btn-outline" onclick="startOver()">
+                &#8634; Recommencer
+            </button>
+        </div>
+    </section>
+</main>
+
+<!-- Overlay de chargement -->
+<div id="loading-overlay" class="hidden">
+    <div class="loading-card">
+        <div class="spinner"></div>
+        <p id="loading-message">Génération en cours...</p>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
