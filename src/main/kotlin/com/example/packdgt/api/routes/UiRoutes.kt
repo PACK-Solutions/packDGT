@@ -2,6 +2,8 @@ package com.example.packdgt.api.routes
 
 import com.example.packdgt.api.dto.AppendTextRequest
 import com.example.packdgt.api.dto.AppendTextResponse
+import com.example.packdgt.api.dto.BatchGenerateRequest
+import com.example.packdgt.api.dto.BatchGenerateResponse
 import com.example.packdgt.api.dto.GenerateRequest
 import com.example.packdgt.api.dto.GenerateResponse
 import com.example.packdgt.config.TemplateRegistry
@@ -33,6 +35,31 @@ fun Route.uiRoutes(
                 val result = documentGenerationService.generate(request, freeTextPlaceholder = true)
                 val id = documentStoreService.store(result.fileName, result.pdfBytes, originalRequest = request)
                 call.respond(HttpStatusCode.Created, GenerateResponse(id, result.fileName))
+            }
+
+            post("/generate-batch") {
+                val request = call.receive<BatchGenerateRequest>()
+                val started = System.nanoTime()
+                val result = documentGenerationService.generateBatch(
+                    templateName = request.templateName,
+                    count = request.count,
+                    data = request.data,
+                    tables = request.tables,
+                    options = request.options,
+                    outputFileName = request.outputFileName
+                )
+                val totalMs = (System.nanoTime() - started) / 1_000_000
+                val id = documentStoreService.store(result.fileName, result.pdfBytes)
+                call.respond(
+                    HttpStatusCode.Created,
+                    BatchGenerateResponse(
+                        id = id,
+                        fileName = result.fileName,
+                        count = request.count,
+                        totalMs = totalMs,
+                        sizeBytes = result.pdfBytes.size
+                    )
+                )
             }
 
             get("/{id}/pdf") {

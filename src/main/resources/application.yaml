@@ -9,3 +9,6 @@ app:
   output:
     directory: output
     saveToDisc: false
+  libreoffice:
+    poolSize: 4          # double the throughput
+    taskTimeoutMs: 600000 # 10 min if you really push it

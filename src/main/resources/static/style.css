@@ -526,6 +526,52 @@ main {
     justify-content: center;
 }
 
+.form-actions-split {
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.batch-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.85rem;
+    background: var(--bg-alt);
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+}
+
+.batch-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.batch-actions input[type="number"] {
+    width: 80px;
+    padding: 0.4rem 0.5rem;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface);
+    text-align: center;
+}
+
+.batch-actions input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.batch-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
 /* ====== Split layout (step 2) ====== */
 .split-layout {
     display: grid;
@@ -747,6 +793,10 @@ main {
     z-index: 1001;
     animation: slideUp 0.35s ease;
     max-width: 400px;
+}
+
+.toast.toast-info {
+    background: var(--success);
 }
 
 @keyframes slideUp {

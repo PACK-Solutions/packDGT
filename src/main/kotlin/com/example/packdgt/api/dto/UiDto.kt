@@ -34,3 +34,20 @@ data class AppendTextResponse(
     val fileName: String,
     val pageCount: Int
 )
+
+data class BatchGenerateRequest(
+    val templateName: String,
+    val count: Int,
+    val outputFileName: String? = null,
+    val data: Map<String, String> = emptyMap(),
+    val tables: Map<String, List<List<String>>> = emptyMap(),
+    val options: com.example.packdgt.api.dto.GenerateOptions? = null
+)
+
+data class BatchGenerateResponse(
+    val id: String,
+    val fileName: String,
+    val count: Int,
+    val totalMs: Long,
+    val sizeBytes: Int
+)

@@ -24,7 +24,7 @@ import java.io.ByteArrayOutputStream
 class PdfConversionService(
     private val poolSize: Int = 2,
     private val startPort: Int = 2002,
-    private val taskTimeout: Long = 60_000L
+    private val taskTimeout: Long = 300_000L
 ) {
 
     private val logger = LoggerFactory.getLogger(PdfConversionService::class.java)

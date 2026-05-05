@@ -8,7 +8,7 @@ import com.example.packdgt.service.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.http.content.*
-import io.ktor.server.netty.*
+import io.ktor.server.netty.Netty
 import io.ktor.server.routing.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -18,7 +18,17 @@ import org.slf4j.LoggerFactory
 const val SERVER_PORT = 8080
 
 fun main() {
-    embeddedServer(Netty, port = SERVER_PORT) {
+    embeddedServer(
+        factory = Netty,
+        configure = {
+            connector { port = SERVER_PORT }
+            // Long-running batch endpoints (génération en lot) peuvent garder un handler
+            // actif plusieurs dizaines de secondes. On désactive les timeouts Netty pour
+            // éviter qu'un canal "idle" ne soit fermé pendant la génération.
+            requestReadTimeoutSeconds = 0
+            responseWriteTimeoutSeconds = 0
+        }
+    ) {
         module()
     }.start(wait = true)
 }
@@ -43,7 +53,8 @@ fun Application.module() {
     val templateService = TemplateService(config.templatesDirectory)
     val pdfConversionService = PdfConversionService(
         poolSize = config.libreOfficePoolSize,
-        startPort = config.libreOfficePort
+        startPort = config.libreOfficePort,
+        taskTimeout = config.libreOfficeTaskTimeoutMs
     )
     val pdfPostProcessingService = PdfPostProcessingService()
     val documentGenerationService = DocumentGenerationService(

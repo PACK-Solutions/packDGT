@@ -1,0 +1,149 @@
+### Génération en lot — 500 relevés de compte fusionnés en un seul PDF
+### Les champs identifiants (numeroAdherent, numeroContrat, identifiantClient) sont
+### automatiquement suffixés -001, -002, ... pour distinguer chaque exemplaire.
+POST http://localhost:8080/api/documents/generate-batch
+Content-Type: application/json
+
+{
+  "templateName": "releve-compte-multi.docx",
+  "count": 500,
+  "outputFileName": "releve-compte-batch-500.pdf",
+  "data": {
+    "numeroAdherent": "7161694",
+    "identifiantClient": "905168641",
+    "numeroContrat": "AVA0001111",
+    "civilite": "M.",
+    "prenom": "Arnaud",
+    "nom": "Le Saint",
+    "adresseLigne1": "LIEU DIT LES ROBERTS",
+    "adresseLigne2": "05310 FREISSINIERES",
+    "dateReleve": "31 DÉCEMBRE 2025",
+    "dateReleveCourt": "31/12/2025",
+    "dateEffetContrat": "19/01/2017",
+    "cadreFiscal": "Assurance-vie",
+    "dateTermeContrat": "19/01/2026",
+    "datePrecedente": "31/12/2024",
+    "datePrecedente3ans": "31/12/2022",
+    "datePrecedente5ans": "31/12/2020",
+    "dateCourante": "31/12/2025",
+    "anneeCourante": "2025",
+    "anneeProchaine": "2026",
+    "epargnePrecedente": "56 229.87 €",
+    "totalVersementsNets": "0.00 €",
+    "totalRachats": "56 000.00 €",
+    "totalArbitragesInvestis": "0.00 €",
+    "totalArbitragesDesinvestis": "0.00 €",
+    "interetsTechniquesInvestis": "300.45 €",
+    "cotisationPlancherEuros": "0.00 €",
+    "plusMoinsValueUCInvestie": "0.00 €",
+    "plusMoinsValueUCDesinvestie": "0.00 €",
+    "cotisationPlancherUC": "0.00 €",
+    "epargneCourante": "889.28 €",
+    "totalRachatsPartiels": "56 000.00 €",
+    "valeurRachat": "889.28 €",
+    "montantSupportEuros": "775.75 €",
+    "fraisSupportEuros": "-131.48",
+    "tauxMoyenRendement": "3.75 %",
+    "tauxRendementMinGaranti": "2.00 %",
+    "montantGarantiEuros": "776.51 €",
+    "dateGarantie": "19/01/2026",
+    "cumulVersementsBrutsPrecedent": "50 500.00 €",
+    "cumulVersementsBrutsCourant": "522.55 €",
+    "fraisEpargneGereeTaux": "0.70 %",
+    "fraisEpargneGereeMontant": "131.48 €",
+    "fraisEpargneGereeUCMontant": "32.37 €",
+    "fraisFinanciersUCMontant": "32.37 €",
+    "fraisArbitragesTaux": "0.00 %",
+    "fraisArbitragesMontant": "0.00 €",
+    "totalFraisPrelevesAnnee": "196.22 €",
+    "totalInteretsTechniquesInvestis": "494.34 €",
+    "totalInteretsTechniquesDesinvestis": "193.89 €",
+    "tauxRendementMinGarantiEuros": "0.00 %",
+    "montantRendementMinGaranti": "0.00 €",
+    "tauxParticipationExcedents": "0.00 %",
+    "montantParticipationExcedents": "494.34 €",
+    "tauxFraisEpargneGeree": "0.70 %",
+    "montantFraisEpargneGeree": "131.48 €",
+    "tauxPrelevementsSociaux": "17.20 %",
+    "montantPrelevementsSociaux": "62.41 €",
+    "montantCotisationPlancher": "0.00 €"
+  },
+  "tables": {
+    "rachats": [
+      ["Rachat partiel net", "14/05/2025", "22/05/2025", "", "", "56 000.00 €"]
+    ],
+    "situationSupportsUC": [
+      ["Choix Solidaire 1", "87.980 €", "1.2933468", "113.79 €", "-0.39"]
+    ],
+    "evolutionUC": [
+      ["Choix Solidaire", "21.22 %", "5.22 %", "2.12 %", "8.43 %"]
+    ],
+    "evolutionSupportEuros": [
+      ["Rendement minimum garanti", "31/12/2025", "31/12/2025", "0.00 %", "", "0.00 €", ""],
+      ["Participation aux excédents", "31/12/2025", "31/12/2025", "0.00 %", "", "494.34 €", ""],
+      ["Frais sur épargne gérée", "31/12/2025", "31/12/2025", "0.70 %", "", "", "131.48 €"]
+    ],
+    "nbUCGaranti": [
+      ["Choix Solidaire", "1.2933468", "0.90 %"]
+    ],
+    "syntheseFrais": [
+      ["Frais épargne gérée euros", "0.70 %", "131.48 €"],
+      ["Frais épargne gérée UC", "0.90 %", "32.37 €"]
+    ],
+    "detailFraisUC": [
+      ["Choix Solidaire", "0.90 %", "32.37 €", "0.90 %", "32.37 €", "64.74 €"]
+    ],
+    "actifsFinanciers": [
+      ["FR0010177899", "Choix Solidaire / ECOFI", "3", "6.12 %", "", "0.90 %", "5.22 %", "", "0.90 %", "1.80 %", "4.32 %", ""]
+    ]
+  }
+}
+
+> {%
+    client.test("Batch PDF generated", function() {
+        client.assert(response.status === 201);
+        client.assert(response.body.id !== undefined);
+        client.assert(response.body.count === 500);
+        client.log("Lot généré : " + response.body.fileName +
+            " (" + response.body.count + " documents, " +
+            Math.round(response.body.sizeBytes / 1024) + " Ko, " +
+            response.body.totalMs + " ms)");
+    });
+%}
+
+###
+
+### Petit lot — 5 exemplaires (utile pour valider sans attendre)
+POST http://localhost:8080/api/documents/generate-batch
+Content-Type: application/json
+
+{
+  "templateName": "attestation-assurance.docx",
+  "count": 5,
+  "data": {
+    "customerName": "Jean Dupont",
+    "policyNumber": "POL-2026-000123",
+    "startDate": "2026-04-01",
+    "endDate": "2027-03-31",
+    "premium": "1250,50 €",
+    "address": "10 rue Exemple, 75001 Paris"
+  },
+  "tables": {
+    "movements": [
+      ["01/04/2026", "Prélèvement prime mensuelle", "-125,05 €", "8 432,50 €"]
+    ]
+  }
+}
+
+> {%
+    client.test("Small batch generated", function() {
+        client.assert(response.status === 201);
+        client.assert(response.body.count === 5);
+    });
+%}
+
+###
+
+### Téléchargement du PDF fusionné (utiliser l'id renvoyé par /generate-batch)
+GET http://localhost:8080/api/documents/{{batchId}}/download
+Accept: application/pdf

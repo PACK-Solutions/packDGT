@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>packDGT - Générateur de documents</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/ui/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
@@ -57,11 +57,20 @@
             <form id="data-form">
                 <div id="fields-container"></div>
                 <div id="tables-container"></div>
-                <div class="form-actions">
+                <div class="form-actions form-actions-split">
                     <button type="submit" class="btn btn-primary btn-lg">
                         Générer le PDF
                         <span class="btn-icon">&#10132;</span>
                     </button>
+                    <div class="batch-actions">
+                        <label for="batch-count" class="batch-label">Lot</label>
+                        <input type="number" id="batch-count" min="1" max="1000" value="10">
+                        <span class="batch-hint">documents</span>
+                        <button type="button" class="btn btn-outline" onclick="generateBatch()">
+                            <span class="btn-icon">&#9783;</span>
+                            Générer en lot
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -152,6 +161,6 @@
     </div>
 </div>
 
-<script src="app.js"></script>
+<script src="/ui/app.js"></script>
 </body>
 </html>

@@ -561,6 +561,74 @@ async function generatePdf() {
     }
 }
 
+// --- Batch generation ---
+async function generateBatch() {
+    if (!selectedTemplate) {
+        showError("Sélectionnez d'abord un template.");
+        return;
+    }
+
+    var countInput = document.getElementById("batch-count");
+    var count = parseInt(countInput.value, 10);
+    if (!count || count < 1 || count > 1000) {
+        showError("Le nombre de documents doit être entre 1 et 1000.");
+        return;
+    }
+
+    var data = {};
+    selectedTemplate.fields.forEach(function (f) {
+        var input = document.getElementById("field-" + f.key);
+        if (input && input.value) data[f.key] = input.value;
+    });
+
+    var tables = {};
+    selectedTemplate.tables.forEach(function (tableDef) {
+        var tbody = document.querySelector('tbody[data-table-key="' + tableDef.key + '"]');
+        if (!tbody) return;
+        var rows = [];
+        tbody.querySelectorAll("tr").forEach(function (tr) {
+            var cells = [];
+            tr.querySelectorAll("input").forEach(function (input) {
+                cells.push(input.value);
+            });
+            if (cells.length > 0) rows.push(cells);
+        });
+        if (rows.length > 0) tables[tableDef.key] = rows;
+    });
+
+    var request = {
+        templateName: selectedTemplate.name,
+        count: count,
+        data: data,
+        tables: tables
+    };
+
+    showLoading("Génération en lot de " + count + " document(s) en cours...");
+    try {
+        var resp = await apiFetch("/api/documents/generate-batch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request)
+        });
+        var result = await resp.json();
+        currentDocumentId = result.id;
+
+        // Skip step 2 (free text not applicable for batch) — go directly to final
+        showStep(3);
+        await showFinal();
+
+        var sizeKb = Math.round(result.sizeBytes / 1024);
+        showInfo(
+            "Lot de " + result.count + " document(s) généré en " +
+            (result.totalMs / 1000).toFixed(1) + "s (" + sizeKb + " Ko)"
+        );
+    } catch (err) {
+        showError("Erreur lors de la génération en lot : " + err.message);
+    } finally {
+        hideLoading();
+    }
+}
+
 // --- Append text ---
 async function appendText() {
     var text = document.getElementById("free-text").value.trim();
@@ -638,8 +706,16 @@ function hideLoading() {
 
 // --- Toast ---
 function showError(message) {
+    showToast(message, "");
+}
+
+function showInfo(message) {
+    showToast(message, "toast-info");
+}
+
+function showToast(message, extraClass) {
     var toast = document.createElement("div");
-    toast.className = "toast";
+    toast.className = "toast" + (extraClass ? " " + extraClass : "");
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(function () {
@@ -647,7 +723,7 @@ function showError(message) {
         toast.style.transform = "translateY(1rem)";
         toast.style.transition = "all 0.3s ease";
         setTimeout(function () { toast.remove(); }, 300);
-    }, 4000);
+    }, 5000);
 }
 
 // --- Utils ---

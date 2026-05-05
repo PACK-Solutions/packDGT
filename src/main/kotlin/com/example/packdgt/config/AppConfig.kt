@@ -7,7 +7,8 @@ data class AppConfig(
     val outputDirectory: String,
     val saveToDisc: Boolean,
     val libreOfficePort: Int = 2002,
-    val libreOfficePoolSize: Int = 2
+    val libreOfficePoolSize: Int = 2,
+    val libreOfficeTaskTimeoutMs: Long = 300_000L
 ) {
     companion object {
         fun load(environment: ApplicationEnvironment): AppConfig {
@@ -17,7 +18,8 @@ data class AppConfig(
                 outputDirectory = config.propertyOrNull("app.output.directory")?.getString() ?: "output",
                 saveToDisc = config.propertyOrNull("app.output.saveToDisc")?.getString()?.toBoolean() ?: false,
                 libreOfficePort = config.propertyOrNull("app.libreoffice.port")?.getString()?.toInt() ?: 2002,
-                libreOfficePoolSize = config.propertyOrNull("app.libreoffice.poolSize")?.getString()?.toInt() ?: 2
+                libreOfficePoolSize = config.propertyOrNull("app.libreoffice.poolSize")?.getString()?.toInt() ?: 2,
+                libreOfficeTaskTimeoutMs = config.propertyOrNull("app.libreoffice.taskTimeoutMs")?.getString()?.toLong() ?: 300_000L
             )
         }
     }
